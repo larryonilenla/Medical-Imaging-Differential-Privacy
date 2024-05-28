@@ -1,0 +1,130 @@
+#load dataset
+from sklearn.datasets import load_iris
+from sklearn.model_selection import learning_curve
+import numpy as np
+iris_dataset = load_iris()
+type(iris_dataset)
+import pandas as pd
+df = pd.DataFrame(data=iris_dataset.data,
+                  columns=iris_dataset.feature_names)
+df.head()
+print("Feature names:\n", df.columns)
+print("Shape:\n", df.shape)
+import pandas as pd
+df_target = pd.DataFrame(data=iris_dataset.target)
+df_target.columns=['Target']
+print('Target:\n',df_target)
+#seperate the training and test dataset
+from sklearn.model_selection import train_test_split
+X_train, X_test, y_train, y_test = train_test_split(df, df_target, random_state=0)
+#print the shape of the training data
+print("X_train shape:", X_train.shape)
+print("y_train shape:", y_train.shape)
+#print the shape of the test data
+print("X_test shape:", X_test.shape)
+print("y_test shape:", y_test.shape)
+#co-relation among the dataset
+import matplotlib.pyplot as plt
+import seaborn as sns
+train_data = pd.merge(X_train, y_train, left_index=True, right_index=True)
+#train_data
+sns.pairplot(data=train_data, hue='Target', diag_kind="hist")
+## Implementation of kNN Algorithm
+##kNN Algorithm: https://towardsdatascience.com/a-simple-introduction-to-k-nearest-neighbors-algorithm-b3519ed98e
+#implement the k-Nearest Neighbor Algorithm
+from sklearn.neighbors import KNeighborsClassifier
+knn = KNeighborsClassifier(n_neighbors=1)
+type(y_train.values.ravel())
+#train a model (second parameter need to be numpy array)
+knn.fit(X_train, y_train.values.ravel())
+print("Training set score: {:.2f}".format(knn.score(X_train, y_train)))
+# Choose your classifier
+classifier = KNeighborsClassifier(n_neighbors=1)  # or DecisionTreeClassifier()
+
+train_sizes, train_scores, test_scores = learning_curve(classifier, X_train, y_train.values.ravel(), cv=10)
+
+train_scores_mean = np.mean(train_scores, axis=1)
+test_scores_mean = np.mean(test_scores, axis=1)
+
+plt.figure()
+plt.title("Learning Curve")
+plt.xlabel("Training examples")
+plt.ylabel("Score")
+
+plt.plot(train_sizes, train_scores_mean, 'o-', color="r", label="Training score")
+plt.plot(train_sizes, test_scores_mean, 'o-', color="g", label="Cross-validation score")
+
+plt.legend(loc="best")
+
+plt.show()
+#predict the label of a new dataset
+import numpy as np
+X_new = np.array([[5, 2.9, 1, 0.2]])
+prediction = knn.predict(X_new)
+print("Prediction:", prediction)
+#predict for the test data
+y_pred = knn.predict(X_test)
+print("Test set predictions:\n", y_pred)
+print("Test set score: {:.2f}".format(knn.score(X_test, y_test)))
+## Implementation of Decision Tree Algorithm
+##Link: https://towardsdatascience.com/decision-tree-classifier-explained-in-real-life-picking-a-vacation-destination-6226b2b60575
+from sklearn import tree
+clf = tree.DecisionTreeClassifier()
+clf = clf.fit(X_train, y_train)
+print("Training set score: {:.2f}".format(clf.score(X_train, y_train)))
+tree.plot_tree(clf);
+#predict for the test data
+y_pred = clf.predict(X_test)
+print("Test set predictions:\n", y_pred)
+print("Test set score: {:.2f}".format(clf.score(X_test, y_test)))
+# save the model to disk
+import joblib
+filename = 'Tree_model.sav'
+joblib.dump(clf, filename)
+
+# some time later...
+
+# load the model from disk
+loaded_model = joblib.load(filename)
+# Import necessary libraries
+from sklearn.pipeline import Pipeline
+from diffprivlib.models import GaussianNB, StandardScaler
+from diffprivlib.mechanisms import Laplace
+# Differential privacy implementation
+epsilon = 0.3  # Set your desired epsilon
+sensitivity = 1.0  # Set your desired sensitivity
+# Add noise to the feature data for differential privacy
+noisy_df = df + np.random.laplace(loc=0, scale=sensitivity/epsilon, size=df.shape)
+# Split the noisy dataset
+X_train_dp, X_test_dp, y_train_dp, y_test_dp = train_test_split(noisy_df, df_target, random_state=0)
+# Train the kNN model on the noisy dataset
+knn_dp = KNeighborsClassifier(n_neighbors=1)
+knn_dp.fit(X_train_dp, y_train_dp.values.ravel())
+# Choose your classifier
+classifier = KNeighborsClassifier(n_neighbors=1)  # or DecisionTreeClassifier()
+
+train_dp_sizes, train_dp_scores, test_dp_scores = learning_curve(classifier, X_train_dp, y_train_dp.values.ravel(), cv=10)
+
+train_dp_scores_mean = np.mean(train_dp_scores, axis=1)
+test_dp_scores_mean = np.mean(test_dp_scores, axis=1)
+
+plt.figure()
+plt.title("Learning Curve")
+plt.xlabel("Training examples")
+plt.ylabel("Score")
+
+plt.plot(train_dp_sizes, train_dp_scores_mean, 'o-', color="r", label="Training score")
+plt.plot(train_dp_sizes, test_dp_scores_mean, 'o-', color="g", label="Cross-validation score")
+
+plt.legend(loc="best")
+
+plt.show()
+# Evaluate the model
+print("Training set score with differential privacy: {:.2f}".format(knn_dp.score(X_train_dp, y_train_dp)))
+print("Test set score with differential privacy: {:.2f}".format(knn_dp.score(X_test_dp, y_test_dp)))
+# Train the Decision Tree model on the noisy dataset
+clf_dp = tree.DecisionTreeClassifier()
+clf_dp = clf_dp.fit(X_train_dp, y_train_dp)
+# Evaluate the model
+print("Training set score with differential privacy: {:.2f}".format(clf_dp.score(X_train_dp, y_train_dp)))
+print("Test set score with differential privacy: {:.2f}".format(clf_dp.score(X_test_dp, y_test_dp)))
